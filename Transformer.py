@@ -23,7 +23,10 @@ def embodyMesh(bm):
     return
 def selectAllbp():
     bpy.ops.object.select_all(action='SELECT')
-    bpy.context.view_layer.objects.active = bpy.context.selected_objects[-1]
+    try:
+        bpy.context.view_layer.objects.active = bpy.context.selected_objects[-1]
+    except IndexError:
+        print("No objects in the scene.")
     return
 def deselectAllbp():
     bpy.ops.object.select_all(action='DESELECT')
@@ -51,7 +54,10 @@ def deleteAll():
     bpy.ops.object.select_all(action='SELECT')
     bpy.ops.object.delete(use_global=False)
 def modeObj():
-    bpy.ops.object.mode_set(mode='OBJECT')  # Switch back to Object Mode
+    try:
+        bpy.ops.object.mode_set(mode='OBJECT')  # Switch back to Object Mode
+    except RuntimeError:
+        return
 def modeEdt():
     bpy.ops.object.mode_set(mode='EDIT')  # Switch back to Object Mode
 def editView():
@@ -102,27 +108,30 @@ def grid(axisVector, offsetVector, density):
         joinAll()
         bm_now = selectionToBmesh(bpy.context.active_object)
     return
-# Project x,z,h, onto x,y,z. Hold y constant 0.
-# transform(["x","y","z","k"],["x*cos(z)*cos(y)*cos(h)","x*cos(z)*sin(y)","x*sin(z)","sin(h)"],[*,0,*,*])
-# transform(["x","y","z"],["x*cos(z)*cos(y)","x*cos(z)*sin(y)","x*sin(z)"],[*,*,*])
-# transform(["x","y"],["x*sin(y)","x*cos(y)],[*,*,0])
-# transform(["x","y"],["x*sin(y)","x*cos(y)],[*,0,*]) # Not allowed (stars must correspond to variables)
 def transform(transformation, time, fps):
-    # For efficiency, get rid of global undo
-    bpy.context.preferences.edit.use_global_undo = False
-    # Get grid, convert to bm
-    bm_og = selectionToBmesh(bpy.context.active_object)
-    bm_reference = bm_og.copy()
+    bpy.context.preferences.edit.use_global_undo = False  # For efficiency, get rid of global undo
+    activeObj = bpy.context.active_object # Get active object
+    activeObj.shape_key_add(name="basis") # Add a basis shape key
+    bm = selectionToBmesh(activeObj) # Get grid, convert make a bm datastructure from it
+    bm_copy = bm.copy()
     for f in range(time*fps):
-        for v in bm_og.verts:
-            # change the bm vertex to the bm_og under a transformation of each variable scaled by f/(time*fps). v.co = mathutils.Vector(v.co)
-            # transfer the data of bm into the mesh and add a time frame
-            # free the bm, free the mb_og
-            # v.co =
-            embodyMesh(bm_og)
-            
-            break
-        break
+        activeObj.shape_key_add(name="Key " + str(f))
+        for i, v in enumerate(bm.verts):
+            co0 = oneVcter(v.co.x, v.co.y, v.co.z)
+            coRemain = co0*(time*fps-f)/(time*fps)
+            coProg = co0-coRemain
+            x = coProg[1]
+            y = coProg[2]
+            z = coProg[3]
+            coTransform = oneVcter(eval(transformation[0]), eval(transformation[0]), eval(transformation[0])) + coRemain
+            bm_copy.verts[i].co = coTransform
+        bm_copy.to_mesh(activeObj.data)
+        activeObj.data.shape_keys.key_blocks['Key' + str(f)].value = 0.0
+        activeObj.data.shape_keys.key_blocks['Key' + str(f)].keyframe_insert("value", frame=f+1)
+        activeObj.data.shape_keys.key_blocks['Key' + str(f)].value = 1.0
+        activeObj.data.shape_keys.key_blocks['Key' + str(f)].keyframe_insert("value", frame=f+2)
+    bm_copy.free()
+    bm.free()
     bpy.context.preferences.edit.use_global_undo = True
 def hollow(dimension, offset):
     obj = bpy.context.active_object

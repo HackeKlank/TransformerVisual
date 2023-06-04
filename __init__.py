@@ -31,6 +31,13 @@ class CreateCubeOperator(bpy.types.Operator):
             hollow(dimensions, offset)
         return {'FINISHED'}
 
+class TransformOperator(bpy.types.Operator):
+    bl_idname = "object.transform"
+    bl_label = "Transform Current Mesh"
+    def execute(self, context):
+        equationsVector = [context.scene.eqn_1, context.scene.eqn_2, context.scene.eqn_3]
+        transform(equationsVector, 2, 4)
+
 class CreateCubePanel(bpy.types.Panel):
     bl_label = "Create Cube Panel"
     bl_idname = "OBJECT_PT_create_cube"
@@ -41,6 +48,7 @@ class CreateCubePanel(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         layout.operator("object.create_cube")
+        layout.operator("object.transform")
         layout.prop(context.scene, 'cube_x')
         layout.prop(context.scene, 'cube_y')
         layout.prop(context.scene, 'cube_z')
@@ -53,7 +61,7 @@ class CreateCubePanel(bpy.types.Panel):
         layout.prop(context.scene, 'eqn_2')
         layout.prop(context.scene, 'eqn_3')
 
-classes = (CreateCubeOperator, CreateCubePanel)
+classes = (CreateCubeOperator, CreateCubePanel, TransformOperator)
 
 def register():
     bpy.types.Scene.cube_x = FloatProperty(name="X dimension", default=0.0)
