@@ -26,7 +26,7 @@ class CreateCubeOperator(bpy.types.Operator):
         offz = context.scene.cube_offz
         density = context.scene.cube_density
         dimensions, offset = oneVcter(x, y, z), oneVcter(offx, offy, offz)
-        grid(dimensions, offset, density)
+        grid(dimensions, offset, density, 3)
         if context.scene.cube_hollow:
             hollow(dimensions, offset)
         return {'FINISHED'}
