@@ -5,7 +5,7 @@ bl_info = {
     "name": "Create Cube Button",
     "author": "Frank Dininno",
     "description": "Adds a button to the 3D view that creates a cube at the origin when pressed.",
-    "blender": (2, 80, 0),
+    "blender": (3, 00, 0),
     "location": "View3D",
     "warning": "",
     "category": "Generic"
@@ -14,19 +14,24 @@ bl_info = {
 class CreateCubeOperator(bpy.types.Operator):
     bl_idname = "object.create_cube"
     bl_label = "Create Cube at Origin"
-
     def execute(self, context):
         modeObj()
         deleteAll()
-        x = context.scene.cube_x
-        y = context.scene.cube_y
-        z = context.scene.cube_z
-        offx = context.scene.cube_offx
-        offy = context.scene.cube_offy
-        offz = context.scene.cube_offz
+
+        allowed_names = {
+            'pi': math.pi,
+            'sin': math.sin,
+            'cos': math.cos
+        }
+        x = eval(context.scene.cube_x, {"__builtins__": None}, allowed_names)
+        y = eval(context.scene.cube_y, {"__builtins__": None}, allowed_names)
+        z = eval(context.scene.cube_z, {"__builtins__": None}, allowed_names)
+        offx = eval(context.scene.cube_offx, {"__builtins__": None}, allowed_names)
+        offy = eval(context.scene.cube_offy, {"__builtins__": None}, allowed_names)
+        offz = eval(context.scene.cube_offz, {"__builtins__": None}, allowed_names)
         density = context.scene.cube_density
         dimensions, offset = oneVcter(x, y, z), oneVcter(offx, offy, offz)
-        grid(dimensions, offset, density, 3)
+        grid(dimensions, offset, density)
         if context.scene.cube_hollow:
             hollow(dimensions, offset)
         return {'FINISHED'}
@@ -36,7 +41,8 @@ class TransformOperator(bpy.types.Operator):
     bl_label = "Transform Current Mesh"
     def execute(self, context):
         equationsVector = [context.scene.eqn_1, context.scene.eqn_2, context.scene.eqn_3]
-        transform(equationsVector, 2, 4)
+        transform(equationsVector, 10)
+        return {'FINISHED'}
 
 class CreateCubePanel(bpy.types.Panel):
     bl_label = "Create Cube Panel"
@@ -64,17 +70,17 @@ class CreateCubePanel(bpy.types.Panel):
 classes = (CreateCubeOperator, CreateCubePanel, TransformOperator)
 
 def register():
-    bpy.types.Scene.cube_x = FloatProperty(name="X dimension", default=0.0)
-    bpy.types.Scene.cube_y = FloatProperty(name="Y dimension", default=2.0)
-    bpy.types.Scene.cube_z = FloatProperty(name="Z dimension", default=2.0)
-    bpy.types.Scene.cube_offx = FloatProperty(name="X offset", default=0)
-    bpy.types.Scene.cube_offy = FloatProperty(name="Y offset", default=0)
-    bpy.types.Scene.cube_offz = FloatProperty(name="Z offset", default=0)
+    bpy.types.Scene.cube_x = StringProperty(name="X dimension", default="2.0")
+    bpy.types.Scene.cube_y = StringProperty(name="Y dimension", default="2.0")
+    bpy.types.Scene.cube_z = StringProperty(name="Z dimension", default="2.0")
+    bpy.types.Scene.cube_offx = StringProperty(name="X offset", default="0")
+    bpy.types.Scene.cube_offy = StringProperty(name="Y offset", default="0")
+    bpy.types.Scene.cube_offz = StringProperty(name="Z offset", default="0")
     bpy.types.Scene.cube_density = FloatProperty(name="Density", default=2.0)
     bpy.types.Scene.cube_hollow = BoolProperty(name="Hollow", default=False)
-    bpy.types.Scene.eqn_1 = StringProperty(name="Equation 1")
-    bpy.types.Scene.eqn_2 = StringProperty(name="Equation 2")
-    bpy.types.Scene.eqn_3 = StringProperty(name="Equation 3")
+    bpy.types.Scene.eqn_1 = StringProperty(name="Equation 1", default="x")
+    bpy.types.Scene.eqn_2 = StringProperty(name="Equation 2", default="y")
+    bpy.types.Scene.eqn_3 = StringProperty(name="Equation 3", default="z")
 
     for cls in classes:
         bpy.utils.register_class(cls)

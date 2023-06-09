@@ -3,7 +3,7 @@ import bmesh
 import mathutils
 import math
 def oneVcter(x,y,z):
-    return mathutils.Vector((z,y,x))
+    return mathutils.Vector((x,y,z))
 def translate(bm, directionVector):
     for v in bm.verts:
         translation_Matrix = mathutils.Matrix.Translation(directionVector)
@@ -108,31 +108,55 @@ def grid(axisVector, offsetVector, density):
         joinAll()
         bm_now = selectionToBmesh(bpy.context.active_object)
     return
-def transform(transformation, time, fps):
+
+import bpy
+
+def transform(transformation, time):
+
     bpy.context.preferences.edit.use_global_undo = False  # For efficiency, get rid of global undo
-    activeObj = bpy.context.active_object # Get active object
-    activeObj.shape_key_add(name="basis") # Add a basis shape key
-    bm = selectionToBmesh(activeObj) # Get grid, convert make a bm datastructure from it
-    bm_copy = bm.copy()
-    for f in range(time*fps):
-        activeObj.shape_key_add(name="Key " + str(f))
-        for i, v in enumerate(bm.verts):
-            co0 = oneVcter(v.co.x, v.co.y, v.co.z)
-            coRemain = co0*(time*fps-f)/(time*fps)
-            coProg = co0-coRemain
-            x = coProg[1]
-            y = coProg[2]
-            z = coProg[3]
-            coTransform = oneVcter(eval(transformation[0]), eval(transformation[0]), eval(transformation[0])) + coRemain
-            bm_copy.verts[i].co = coTransform
-        bm_copy.to_mesh(activeObj.data)
-        activeObj.data.shape_keys.key_blocks['Key' + str(f)].value = 0.0
-        activeObj.data.shape_keys.key_blocks['Key' + str(f)].keyframe_insert("value", frame=f+1)
-        activeObj.data.shape_keys.key_blocks['Key' + str(f)].value = 1.0
-        activeObj.data.shape_keys.key_blocks['Key' + str(f)].keyframe_insert("value", frame=f+2)
-    bm_copy.free()
-    bm.free()
+    original_object = bpy.context.active_object # Get original object
+
+    # Duplicate original object
+    bpy.ops.object.duplicate({"object": original_object, "selected_objects": [original_object]})
+
+    activeObj = bpy.context.active_object # Get the duplicated object, which will be the active object after duplication
+
+    # Add basis shape key
+    activeObj.shape_key_add(name='Basis')
+    activeObj.active_shape_key_index = 0
+
+    addFrame = True
+    framesPerSecond = 24 # Blender constant
+    interpolationPerFrame = 3
+
+    for f in range(time*framesPerSecond+1):
+
+        # Add new shape key
+        keyString = 'Key ' + str(f+1)
+        prevString = 'Key ' + str(f)
+        activeObj.shape_key_add(name=keyString)
+        activeObj.active_shape_key_index = f+1
+
+        for i, v in enumerate(original_object.data.vertices):
+            remainder = (time*framesPerSecond-f)/(time*framesPerSecond)
+            x0,y0,z0 = v.co.x, v.co.y, v.co.z
+            xr,yr,zr = x0*remainder, y0*remainder, z0*remainder
+            x, y, z = x0*(1-remainder), y0*(1-remainder), z0*(1-remainder)
+            activeObj.data.shape_keys.key_blocks[keyString].data[i].co.x = eval(transformation[0])+xr
+            activeObj.data.shape_keys.key_blocks[keyString].data[i].co.y = eval(transformation[1])+yr
+            activeObj.data.shape_keys.key_blocks[keyString].data[i].co.z = eval(transformation[2])+zr
+
+        activeObj.data.shape_keys.key_blocks[keyString].value = 0.0
+        activeObj.data.shape_keys.key_blocks[keyString].keyframe_insert("value", frame=f+1)
+        activeObj.data.shape_keys.key_blocks[keyString].value = 1.0
+        activeObj.data.shape_keys.key_blocks[keyString].keyframe_insert("value", frame=f+2)
+        activeObj.data.shape_keys.key_blocks[keyString].value = 0.0
+        activeObj.data.shape_keys.key_blocks[keyString].keyframe_insert("value", frame=f+3)
+    activeObj.data.shape_keys.key_blocks[keyString].value = 1.0 # Negate the last cancellation
+    activeObj.data.shape_keys.key_blocks[keyString].keyframe_insert("value", frame=(time*framesPerSecond+3))
     bpy.context.preferences.edit.use_global_undo = True
+
+
 def hollow(dimension, offset):
     obj = bpy.context.active_object
     bm = selectionToBmesh(obj)
