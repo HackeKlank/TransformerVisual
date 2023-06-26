@@ -34,7 +34,7 @@ class CreateCubeOperator(bpy.types.Operator):
         dimensions, offset = oneVcter(x, y, z), oneVcter(offx, offy, offz)
         grid(dimensions, offset, density)
         if context.scene.cube_hollow:
-            hollow(dimensions, offset)
+            hollow(dimensions, offset, density)
         return {'FINISHED'}
 
 class TransformOperator(bpy.types.Operator):

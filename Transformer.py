@@ -1,15 +1,17 @@
-import bpy
-import bmesh
+import bpy # bpy is better for transforming meshes
+import bmesh # Bmesh is better for creating meshes
 import mathutils
 import math
 def oneVcter(x,y,z):
     return mathutils.Vector((x,y,z))
+def scaleVec(vector, scale):
+    return oneVcter(vector[0]*scale, vector[1]*scale, vector[2]*scale)
 def translate(bm, directionVector):
     for v in bm.verts:
         translation_Matrix = mathutils.Matrix.Translation(directionVector)
         v.co = translation_Matrix @ v.co
     return
-def smosh(bm, scaleVector):
+def smosh(bm, scaleVector): # Smoshes the unit cube down dimensions based on which dimensions of the cube should be zero
     for v in bm.verts:
         scale_Matrix = mathutils.Matrix.Diagonal(scaleVector).to_4x4()
         v.co = scale_Matrix @ v.co
@@ -67,7 +69,7 @@ def grid(axisVector, offsetVector, density):
     # Create bmesh and unit Cube
     bm = bmesh.new()
     bmesh.ops.create_cube(bm, size=1.0)
-    bmesh.ops.translate(bm, verts=list(bm.verts), vec=mathutils.Vector((1/2, 1/2, 1/2)))
+    bmesh.ops.translate(bm, verts=list(bm.verts), vec=oneVcter(1/2, 1/2, 1/2))
     # Dimensionalize the cube
     smosh(bm,axisVector)
     # Make the cube equal to the density in each axis
@@ -162,32 +164,23 @@ def transform(transformation, time, transition, hide, Res):
     if hide: # Destroy the unchanged mesh
         bpy.data.objects.remove(original_object, do_unlink=True)
     bpy.context.preferences.edit.use_global_undo = True
-def hollow(dimension, offset):
-    # nudgeVector =
+def hollow(dimension, offset, density):
     obj = bpy.context.active_object
     bm = selectionToBmesh(obj)
-    bmSelect(bm, offset, dimension+offset)
-    bmesh.ops.delete(bm, geom=[v for v in bm.verts if v.select], context="VERTS")
+    nudgeVector = scaleVec(scaleVec(dimension, 1/(1+density*(dimension[0]+dimension[1]+dimension[2]))), 1/2)
+    bmSelect(bm, offset+nudgeVector, dimension+offset-nudgeVector)
+    bmesh.ops.delete(bm, geom=[f for f in bm.faces if f.select], context='FACES')
     bm.to_mesh(obj.data)
     bm.free()
 def bmSelect(bm, lowerVector, upperVector):
-    for v in bm.verts:
-        v.select = False # bpy ops and bmesh ops are different
-    for v in bm.verts:
-        vector = mathutils.Vector(v.co)
+    for f in bm.faces:
+        f.select = False # deselect all faces
+    for f in bm.faces:
+        vector = f.calc_center_median()  # use face centroid
         if lowerVector.x < vector[0] < upperVector.x and \
                 lowerVector.y < vector[1] < upperVector.y and \
                 lowerVector.z < vector[2] < upperVector.z:
-            v.select = True
-def bmSelectInclusive(bm, lowerVector, upperVector):
-    for v in bm.verts:
-        v.select = False # bpy ops and bmesh ops are different
-    for v in bm.verts:
-        vector = mathutils.Vector(v.co)
-        if lowerVector.x <= vector[0] <= upperVector.x and \
-                lowerVector.y <= vector[1] <= upperVector.y and \
-                lowerVector.z <= vector[2] <= upperVector.z:
-            v.select = True
+            f.select = True
 def solidify():
     # Select the object
     curObj = bpy.context.active_object
