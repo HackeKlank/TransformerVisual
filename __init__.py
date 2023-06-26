@@ -1,3 +1,4 @@
+import bpy
 from bpy.props import FloatProperty, BoolProperty, StringProperty
 from .Transformer import *
 
@@ -14,8 +15,8 @@ bl_info = {
 class CreateCubeOperator(bpy.types.Operator):
     bl_idname = "object.create_cube"
     bl_label = "Create Cube at Origin"
-    def execute(self, context):
 
+    def execute(self, context):
         modeObj()
         deleteAll()
 
@@ -37,22 +38,32 @@ class CreateCubeOperator(bpy.types.Operator):
             hollow(dimensions, offset, density)
         return {'FINISHED'}
 
+
 class TransformOperator(bpy.types.Operator):
     bl_idname = "object.transform"
     bl_label = "Transform Current Mesh"
-    def execute(self, context):
 
-        eq1,eq2,eq3 = context.scene.eqn_1, context.scene.eqn_2, context.scene.eqn_3
+    def execute(self, context):
+        eq1, eq2, eq3 = context.scene.eqn_1, context.scene.eqn_2, context.scene.eqn_3
         equationsVector = [eq1, eq2, eq3]
-        transform(equationsVector, context.scene.time, context.scene.cube_transition, context.scene.cube_hide, context.scene.animationResolution)
+        transform(
+            equationsVector,
+            context.scene.time,
+            context.scene.cube_transition,
+            context.scene.cube_hide,
+            context.scene.animationResolution
+        )
         return {'FINISHED'}
+
 
 class SolidifyOperator(bpy.types.Operator):
     bl_idname = "object.solidify"
     bl_label = "Solidify Current Mesh"
+
     def execute(self, context):
         solidify()
         return {'FINISHED'}
+
 
 class CreateCubePanel(bpy.types.Panel):
     bl_label = "Create Cube Panel"
@@ -60,7 +71,7 @@ class CreateCubePanel(bpy.types.Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = 'Tools'
-#
+
     def draw(self, context):
         layout = self.layout
         layout.operator("object.create_cube")
@@ -82,7 +93,9 @@ class CreateCubePanel(bpy.types.Panel):
         layout.prop(context.scene, 'eqn_2')
         layout.prop(context.scene, 'eqn_3')
 
+
 classes = (CreateCubeOperator, CreateCubePanel, TransformOperator, SolidifyOperator)
+
 
 def register():
     bpy.types.Scene.cube_x = StringProperty(name="X dimension", default="2.0")
@@ -104,6 +117,7 @@ def register():
     for cls in classes:
         bpy.utils.register_class(cls)
 
+
 def unregister():
     for cls in classes:
         bpy.utils.unregister_class(cls)
@@ -123,6 +137,7 @@ def unregister():
     del bpy.types.Scene.eqn_1
     del bpy.types.Scene.eqn_2
     del bpy.types.Scene.eqn_3
+
 
 if __name__ == "__main__":
     register()
