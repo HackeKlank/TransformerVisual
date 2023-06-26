@@ -109,58 +109,64 @@ def grid(axisVector, offsetVector, density):
         bm_now = selectionToBmesh(bpy.context.active_object)
     return
 
-import bpy
+def transform(transformation, time, transition, hide, Res):
 
-def transform(transformation, time):
+    transitionConst = 0.0
+
+    if transition:
+        transitionConst = 1.0
 
     bpy.context.preferences.edit.use_global_undo = False  # For efficiency, get rid of global undo
     original_object = bpy.context.active_object # Get original object
 
     # Duplicate original object
     bpy.ops.object.duplicate({"object": original_object, "selected_objects": [original_object]})
+    if hide:
+        original_object.hide_viewport = True
 
     activeObj = bpy.context.active_object # Get the duplicated object, which will be the active object after duplication
 
     # Add basis shape key
     activeObj.shape_key_add(name='Basis')
-    activeObj.active_shape_key_index = 0
+    activeObj.active_shape_key_index = 1
 
-    addFrame = True
     framesPerSecond = 24 # Blender constant
-    interpolationPerFrame = 3
+    frameDivisor = Res
 
-    for f in range(time*framesPerSecond+1):
-
+    upperRange = int(math.floor(time*framesPerSecond/frameDivisor))
+    for f in range(upperRange): # Accurate to the nearest one-twenty-fourths of a second
+        frameIndex = f+2
+        # We add two because the basis shape key starts on frame 1.
+        # The for loop starts at index zero and ends one before the upperRange,
+        # so we must add 2 for our first shape key to start on frame 2.
         # Add new shape key
-        keyString = 'Key ' + str(f+1)
-        prevString = 'Key ' + str(f)
+        keyString = 'Key ' + str(frameIndex)
         activeObj.shape_key_add(name=keyString)
-        activeObj.active_shape_key_index = f+1
+        activeObj.active_shape_key_index = frameIndex
 
         for i, v in enumerate(original_object.data.vertices):
-            remainder = (time*framesPerSecond-f)/(time*framesPerSecond)
+            remainder = (upperRange-frameIndex+1)/(upperRange)
             x0,y0,z0 = v.co.x, v.co.y, v.co.z
-            xr,yr,zr = x0*remainder, y0*remainder, z0*remainder
-            x, y, z = x0*(1-remainder), y0*(1-remainder), z0*(1-remainder)
+            xr,yr,zr = x0*remainder*transitionConst, y0*remainder*transitionConst, z0*remainder*transitionConst
+            x, y, z = x0*(1-remainder), y0*(1-remainder), z0*(1-remainder) # Referenced by transformations[i]
             activeObj.data.shape_keys.key_blocks[keyString].data[i].co.x = eval(transformation[0])+xr
             activeObj.data.shape_keys.key_blocks[keyString].data[i].co.y = eval(transformation[1])+yr
             activeObj.data.shape_keys.key_blocks[keyString].data[i].co.z = eval(transformation[2])+zr
 
-        activeObj.data.shape_keys.key_blocks[keyString].value = 0.0
-        activeObj.data.shape_keys.key_blocks[keyString].keyframe_insert("value", frame=f+1)
         activeObj.data.shape_keys.key_blocks[keyString].value = 1.0
-        activeObj.data.shape_keys.key_blocks[keyString].keyframe_insert("value", frame=f+2)
+        activeObj.data.shape_keys.key_blocks[keyString].keyframe_insert("value", frame=frameIndex*frameDivisor)
         activeObj.data.shape_keys.key_blocks[keyString].value = 0.0
-        activeObj.data.shape_keys.key_blocks[keyString].keyframe_insert("value", frame=f+3)
-    activeObj.data.shape_keys.key_blocks[keyString].value = 1.0 # Negate the last cancellation
-    activeObj.data.shape_keys.key_blocks[keyString].keyframe_insert("value", frame=(time*framesPerSecond+3))
+        activeObj.data.shape_keys.key_blocks[keyString].keyframe_insert("value", frame=(frameIndex-1)*frameDivisor)
+        if ((frameIndex-1) < upperRange): # Avoid adding a frame after the last shape key turns to a value of 1.0
+            activeObj.data.shape_keys.key_blocks[keyString].keyframe_insert("value", frame=(frameIndex+1)*frameDivisor)
+    if hide: # Destroy the unchanged mesh
+        bpy.data.objects.remove(original_object, do_unlink=True)
     bpy.context.preferences.edit.use_global_undo = True
-
-
 def hollow(dimension, offset):
+    # nudgeVector =
     obj = bpy.context.active_object
     bm = selectionToBmesh(obj)
-    bmSelect(bm, offset, dimension)
+    bmSelect(bm, offset, dimension+offset)
     bmesh.ops.delete(bm, geom=[v for v in bm.verts if v.select], context="VERTS")
     bm.to_mesh(obj.data)
     bm.free()
@@ -182,3 +188,8 @@ def bmSelectInclusive(bm, lowerVector, upperVector):
                 lowerVector.y <= vector[1] <= upperVector.y and \
                 lowerVector.z <= vector[2] <= upperVector.z:
             v.select = True
+def solidify():
+    # Select the object
+    curObj = bpy.context.active_object
+    curObj.data.shape_keys.key_blocks["Basis"] = curObj.data.shape_keys.key_blocks["Key 100"]
+    joinAll()
