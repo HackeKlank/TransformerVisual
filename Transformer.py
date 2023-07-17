@@ -8,21 +8,11 @@ def grid(axisVector, offsetVector, density):
     bmesh.ops.create_cube(bm, size=1.0)
     bmesh.ops.translate(bm, verts=list(bm.verts), vec=oneVcter(1/2, 1/2, 1/2))
     smosh(bm, axisVector)
-    xCuts = math.floor(density * axisVector[0])
-    yCuts = math.floor(density * axisVector[1])
-    zCuts = math.floor(density * axisVector[2])
-    try:
-        xScale = 1 / xCuts
-    except ZeroDivisionError:
-        xScale = 0
-    try:
-        yScale = 1 / yCuts
-    except ZeroDivisionError:
-        yScale = 0
-    try:
-        zScale = 1 / zCuts
-    except ZeroDivisionError:
-        zScale = 0
+    xCuts, yCuts, zCuts = math.floor(density * axisVector[0]), math.floor(density * axisVector[1]), math.floor(
+        density * axisVector[2])
+    xScale = 1 / xCuts if xCuts != 0 else 0
+    yScale = 1 / yCuts if yCuts != 0 else 0
+    zScale = 1 / zCuts if zCuts != 0 else 0
     iterationsVector = mathutils.Vector((xCuts, yCuts, zCuts))
     scaleVector = mathutils.Vector((xScale, yScale, zScale))
     smosh(bm, scaleVector)
@@ -42,7 +32,7 @@ def grid(axisVector, offsetVector, density):
         bm_now = selectionToBmesh(bpy.context.active_object)
     return
 
-def transform(transformation, time, transition, hide, Res):
+def transform(transformation, time, transition, hide, Res, timefunction):
     transitionConst = 0.0
     if transition:
         transitionConst = 1.0
@@ -64,9 +54,13 @@ def transform(transformation, time, transition, hide, Res):
         activeObj.active_shape_key_index = frameIndex
         for i, v in enumerate(original_object.data.vertices):
             remainder = (upperRange - frameIndex + 1) / (upperRange)
+            if not timefunction:
+                remainder=0
             x0, y0, z0 = v.co.x, v.co.y, v.co.z
             xr, yr, zr = x0 * remainder * transitionConst, y0 * remainder * transitionConst, z0 * remainder * transitionConst
             x, y, z = x0 * (1 - remainder), y0 * (1 - remainder), z0 * (1 - remainder)
+            t = ((frameIndex-1)*frameDivisor)/(framesPerSecond)
+            T = ((upperRange+1)*frameDivisor)/(framesPerSecond)
             activeObj.data.shape_keys.key_blocks[keyString].data[i].co.x = eval(transformation[0]) + xr
             activeObj.data.shape_keys.key_blocks[keyString].data[i].co.y = eval(transformation[1]) + yr
             activeObj.data.shape_keys.key_blocks[keyString].data[i].co.z = eval(transformation[2]) + zr

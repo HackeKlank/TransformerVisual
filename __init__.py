@@ -14,7 +14,7 @@ bl_info = {
 
 class CreateCubeOperator(bpy.types.Operator):
     bl_idname = "object.create_cube"
-    bl_label = "Create Cube at Origin"
+    bl_label = "Create Grid at Origin"
 
     def execute(self, context):
         modeObj()
@@ -51,19 +51,10 @@ class TransformOperator(bpy.types.Operator):
             context.scene.time,
             context.scene.cube_transition,
             context.scene.cube_hide,
-            context.scene.animationResolution
+            context.scene.animationResolution,
+            context.scene.timefunction
         )
         return {'FINISHED'}
-
-
-class SolidifyOperator(bpy.types.Operator):
-    bl_idname = "object.solidify"
-    bl_label = "Solidify Current Mesh"
-
-    def execute(self, context):
-        solidify()
-        return {'FINISHED'}
-
 
 class CreateCubePanel(bpy.types.Panel):
     bl_label = "Create Cube Panel"
@@ -76,7 +67,6 @@ class CreateCubePanel(bpy.types.Panel):
         layout = self.layout
         layout.operator("object.create_cube")
         layout.operator("object.transform")
-        layout.operator("object.solidify")
         layout.prop(context.scene, 'cube_x')
         layout.prop(context.scene, 'cube_y')
         layout.prop(context.scene, 'cube_z')
@@ -87,6 +77,7 @@ class CreateCubePanel(bpy.types.Panel):
         layout.prop(context.scene, 'time')
         layout.prop(context.scene, 'animationResolution')
         layout.prop(context.scene, 'cube_hollow')
+        layout.prop(context.scene, 'timefunction')
         layout.prop(context.scene, 'cube_transition')
         layout.prop(context.scene, 'cube_hide')
         layout.prop(context.scene, 'eqn_1')
@@ -94,21 +85,22 @@ class CreateCubePanel(bpy.types.Panel):
         layout.prop(context.scene, 'eqn_3')
 
 
-classes = (CreateCubeOperator, CreateCubePanel, TransformOperator, SolidifyOperator)
+classes = (CreateCubeOperator, CreateCubePanel, TransformOperator)
 
 
 def register():
-    bpy.types.Scene.cube_x = StringProperty(name="X dimension", default="2.0")
-    bpy.types.Scene.cube_y = StringProperty(name="Y dimension", default="2.0")
-    bpy.types.Scene.cube_z = StringProperty(name="Z dimension", default="2.0")
+    bpy.types.Scene.cube_x = StringProperty(name="X dimension", default="1.0")
+    bpy.types.Scene.cube_y = StringProperty(name="Y dimension", default="1.0")
+    bpy.types.Scene.cube_z = StringProperty(name="Z dimension", default="1.0")
     bpy.types.Scene.cube_offx = StringProperty(name="X offset", default="0")
     bpy.types.Scene.cube_offy = StringProperty(name="Y offset", default="0")
     bpy.types.Scene.cube_offz = StringProperty(name="Z offset", default="0")
     bpy.types.Scene.cube_density = FloatProperty(name="Density", default=2.0)
-    bpy.types.Scene.time = FloatProperty(name="Time", default=5.0)
+    bpy.types.Scene.time = FloatProperty(name="Time", default=1.5)
     bpy.types.Scene.animationResolution = FloatProperty(name="Animation Resolution", default=2.0)
     bpy.types.Scene.cube_hollow = BoolProperty(name="Hollow", default=False)
-    bpy.types.Scene.cube_transition = BoolProperty(name="Transition", default=True)
+    bpy.types.Scene.timefunction = BoolProperty(name="Smooth Transition", default=True)
+    bpy.types.Scene.cube_transition = BoolProperty(name="Grid Transition", default=True)
     bpy.types.Scene.cube_hide = BoolProperty(name="Hide Grid", default=True)
     bpy.types.Scene.eqn_1 = StringProperty(name="Equation 1", default="x")
     bpy.types.Scene.eqn_2 = StringProperty(name="Equation 2", default="y")
@@ -132,6 +124,7 @@ def unregister():
     del bpy.types.Scene.time
     del bpy.types.Scene.animationResolution
     del bpy.types.Scene.cube_hollow
+    del bpy.types.Scene.timefunction
     del bpy.types.Scene.cube_transition
     del bpy.types.Scene.cube_hide
     del bpy.types.Scene.eqn_1
